@@ -55,9 +55,14 @@
   function totalSetsInDraft(draft) {
     return draft.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
   }
+  const RESISTANCE_LABELS = { none: 'None', bands: 'Bands', chains: 'Chains', minibands: 'Mini bands' };
+  function effectiveWeight(s) {
+    const extra = (s.resistanceType && s.resistanceType !== 'none') ? (Number(s.resistanceKg) || 0) : 0;
+    return (Number(s.weight) || 0) + extra;
+  }
   function topSetOf(exercise) {
     if (!exercise || exercise.sets.length === 0) return null;
-    return exercise.sets.reduce((top, s) => (s.weight > top.weight ? s : top), exercise.sets[0]);
+    return exercise.sets.reduce((top, s) => (effectiveWeight(s) > effectiveWeight(top) ? s : top), exercise.sets[0]);
   }
 
   // ---------- DOM refs ----------
@@ -303,14 +308,27 @@
         </div>
         <div class="set-rows" data-ex-id="${ex.id}">
           ${ex.sets.map((s, idx) => `
-            <div class="set-row" data-ex-id="${ex.id}" data-set-id="${s.id}">
-              <span class="set-num">#${idx + 1}</span>
-              <input type="number" class="set-weight" data-field="weight" data-ex-id="${ex.id}" data-set-id="${s.id}" value="${s.weight}" placeholder="kg">
-              <span class="set-x">×</span>
-              <input type="number" class="set-reps" data-field="reps" data-ex-id="${ex.id}" data-set-id="${s.id}" value="${s.reps}" placeholder="reps">
-              <span class="set-at">@RIR</span>
-              <input type="number" step="0.5" class="set-rir" data-field="rir" data-ex-id="${ex.id}" data-set-id="${s.id}" value="${s.rir}" placeholder="RIR">
-              <button class="icon-btn del-set" data-ex-id="${ex.id}" data-set-id="${s.id}" title="Delete set">✕</button>
+            <div class="set-row-wrap" data-ex-id="${ex.id}" data-set-id="${s.id}">
+              <div class="set-row" data-ex-id="${ex.id}" data-set-id="${s.id}">
+                <span class="set-num">#${idx + 1}${s.dropSet ? ' <span class="drop-tag">DS</span>' : ''}</span>
+                <input type="number" class="set-weight" data-field="weight" data-ex-id="${ex.id}" data-set-id="${s.id}" value="${s.weight}" placeholder="kg">
+                <span class="set-x">×</span>
+                <input type="number" class="set-reps" data-field="reps" data-ex-id="${ex.id}" data-set-id="${s.id}" value="${s.reps}" placeholder="reps">
+                <span class="set-at">@RIR</span>
+                <input type="number" step="0.5" class="set-rir" data-field="rir" data-ex-id="${ex.id}" data-set-id="${s.id}" value="${s.rir}" placeholder="RIR">
+                <button class="icon-btn del-set" data-ex-id="${ex.id}" data-set-id="${s.id}" title="Delete set">✕</button>
+              </div>
+              <div class="set-extra">
+                <select class="set-resistance-type" data-field="resistanceType" data-ex-id="${ex.id}" data-set-id="${s.id}">
+                  ${Object.entries(RESISTANCE_LABELS).map(([val, label]) =>
+                    `<option value="${val}" ${s.resistanceType === val ? 'selected' : ''}>${label}</option>`).join('')}
+                </select>
+                <input type="number" class="set-resistance-kg" data-field="resistanceKg" data-ex-id="${ex.id}" data-set-id="${s.id}" value="${s.resistanceKg || 0}" placeholder="+kg" title="Added tension at top of lift (kg)">
+                <label class="dropset-label">
+                  <input type="checkbox" data-field="dropSet" data-ex-id="${ex.id}" data-set-id="${s.id}" ${s.dropSet ? 'checked' : ''}>
+                  Drop set
+                </label>
+              </div>
             </div>`).join('')}
         </div>
         <button class="ghost add-set" data-ex-id="${ex.id}">+ Add set</button>
@@ -331,7 +349,15 @@
       btn.addEventListener('click', () => {
         const ex = ent.draft.exercises.find(e => e.id === btn.dataset.exId);
         const last = ex.sets[ex.sets.length - 1];
-        ex.sets.push({ id: uid(), weight: last ? last.weight : 0, reps: last ? last.reps : 0, rir: last ? last.rir : 2 });
+        ex.sets.push({
+          id: uid(),
+          weight: last ? last.weight : 0,
+          reps: last ? last.reps : 0,
+          rir: last ? last.rir : 2,
+          resistanceType: last ? last.resistanceType : 'none',
+          resistanceKg: last ? last.resistanceKg : 0,
+          dropSet: false, // never auto-carry drop-set status — each set should be marked deliberately
+        });
         onChange();
       });
     });
@@ -342,11 +368,16 @@
         onChange();
       });
     });
-    container.querySelectorAll('input[data-field]').forEach(input => {
-      input.addEventListener('input', () => {
-        const ex = ent.draft.exercises.find(e => e.id === input.dataset.exId);
-        const s = ex.sets.find(s => s.id === input.dataset.setId);
-        s[input.dataset.field] = Number(input.value);
+    container.querySelectorAll('[data-field]').forEach(field => {
+      const isCheckbox = field.type === 'checkbox';
+      const isSelect = field.tagName === 'SELECT';
+      const eventName = (isCheckbox || isSelect) ? 'change' : 'input';
+      field.addEventListener(eventName, () => {
+        const ex = ent.draft.exercises.find(e => e.id === field.dataset.exId);
+        const s = ex.sets.find(s => s.id === field.dataset.setId);
+        if (isCheckbox) s[field.dataset.field] = field.checked;
+        else if (isSelect) s[field.dataset.field] = field.value;
+        else s[field.dataset.field] = Number(field.value);
         persistDraftOnly(ent);
         const counter = document.getElementById('sets-counter');
         if (counter) counter.textContent = totalSetsInDraft(ent.draft);
@@ -472,7 +503,7 @@
       </div>
 
       <h2 style="margin-top:22px;">Today's workout</h2>
-      <p class="hint">The heaviest set on <strong>${primary ? primary.name : 'the primary lift'}</strong> drives next session's prescribed weight. Accessory exercises are logged, not autoregulated.</p>
+      <p class="hint">The heaviest set on <strong>${primary ? primary.name : 'the primary lift'}</strong> drives next session's prescribed weight — bar weight plus any band/chain tension counts as the effective load. Accessory exercises are logged, not autoregulated.</p>
       <div id="session-builder">${sessionBuilderHTML(draft, { primaryLocked: true })}</div>
       <button class="ghost" id="add-exercise-btn" style="margin-top:8px;">+ Add exercise</button>
 
@@ -502,7 +533,9 @@
       const currentTopSet = topSetOf(currentPrimary);
       if (!currentTopSet) return;
 
-      const session = { weight: currentTopSet.weight, reps: currentTopSet.reps, actualRIR: currentTopSet.rir };
+      // Use effective load (bar weight + band/chain tension) so accommodating resistance
+      // actually counts toward progression — a bar-weight-only view would understate the set.
+      const session = { weight: effectiveWeight(currentTopSet), reps: currentTopSet.reps, actualRIR: currentTopSet.rir };
       const updated = E.advanceStrengthWeek(current, session);
       updated.entityName = current.entityName;
 
@@ -522,18 +555,28 @@
     });
   }
 
+  function formatTopSetCell(h) {
+    const primary = h.exercises && h.exercises.find(e => e.isPrimary);
+    const top = primary ? topSetOf(primary) : null;
+    const resistanceNote = top && top.resistanceType && top.resistanceType !== 'none'
+      ? ` (${top.weight}kg +${top.resistanceKg || 0} ${RESISTANCE_LABELS[top.resistanceType].toLowerCase()})`
+      : '';
+    const dropTag = top && top.dropSet ? ' <span class="drop-tag">DS</span>' : '';
+    return `${h.session.weight}kg${resistanceNote} x${h.session.reps} @${h.session.actualRIR}${dropTag}`;
+  }
+
   function renderStrengthHistory(ent) {
     if (!ent.history.length) return '<p class="hint">No sessions logged yet.</p>';
     const rows = ent.history.slice().reverse().map(h => `
       <tr>
         <td>${h.block} wk${h.week}</td>
-        <td>${h.session.weight}kg x${h.session.reps} @${h.session.actualRIR}</td>
+        <td>${formatTopSetCell(h)}</td>
         <td>${h.exercises && h.exercises.length > 1 ? h.exercises.slice(1).map(e => e.name).join(', ') : '—'}</td>
         <td>e1RM ${Math.round(h.adj.e1rm)}</td>
         <td>${h.adj.nextWeight}kg</td>
       </tr>`).join('');
     return `<h2 style="margin-top:22px;">History</h2><table class="history">
-      <thead><tr><th>Block/Wk</th><th>Top set</th><th>Accessories</th><th>Est 1RM</th><th>Next</th></tr></thead>
+      <thead><tr><th>Block/Wk</th><th>Top set (effective load)</th><th>Accessories</th><th>Est 1RM</th><th>Next</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   }
