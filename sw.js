@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ledger-v1';
+const CACHE_NAME = 'ledger-v2'; // bump this string any time you want to force-clear old installed caches
 const ASSETS = [
   './',
   './index.html',
@@ -24,16 +24,17 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Cache-first for app shell, falling back to network, so it works offline once installed.
+// Network-first: always try to fetch the latest version when online (so edits you push
+// to GitHub show up the next time you open the app), falling back to the cached copy only
+// when there's no connection. Cache-first would silently freeze the app on whatever version
+// was installed first — wrong behavior for an app you're actively updating.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((res) => {
-        const resClone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
-        return res;
-      }).catch(() => cached);
-    })
+    fetch(event.request).then((res) => {
+      const resClone = res.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+      return res;
+    }).catch(() => caches.match(event.request))
   );
 });
