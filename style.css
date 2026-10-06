@@ -155,7 +155,11 @@ table.history tr:last-child td { color: var(--accent-ink); }
   font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 2px 4px;
 }
 .icon-btn:hover { color: var(--warn); }
-.set-rows { display: flex; flex-direction: column; gap: 6px; }
+.set-rows { display: flex; flex-direction: column; gap: 10px; }
+.set-row-wrap {
+  border-bottom: 1px dashed var(--line); padding-bottom: 8px;
+}
+.set-rows .set-row-wrap:last-child { border-bottom: none; padding-bottom: 0; }
 .set-row {
   display: grid; grid-template-columns: 26px 1fr 14px 1fr 40px 1fr 22px;
   align-items: center; gap: 6px; font-size: 12px;
@@ -165,12 +169,31 @@ table.history tr:last-child td { color: var(--accent-ink); }
 .set-row input {
   padding: 6px 6px; font-size: 12px; width: 100%;
 }
+.set-extra {
+  display: grid; grid-template-columns: 1fr 70px auto; gap: 6px; align-items: center;
+  margin-top: 6px; padding-left: 32px;
+}
+.set-extra select, .set-extra input {
+  padding: 5px 6px; font-size: 11px; width: 100%;
+}
+.dropset-label {
+  display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ink-dim);
+  text-transform: none; letter-spacing: normal; margin: 0; white-space: nowrap;
+}
+.dropset-label input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+.drop-tag {
+  font-size: 9px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--warn) 25%, transparent); color: var(--warn);
+  padding: 1px 5px; border-radius: 2px; margin-left: 4px;
+}
 button.add-set {
   margin-top: 10px; width: auto; padding: 6px 12px; font-size: 11px;
 }
 button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (max-width: 480px) {
   .set-row { grid-template-columns: 20px 1fr 10px 1fr 32px 1fr 20px; font-size: 11px; }
+  .set-extra { grid-template-columns: 1fr 55px; padding-left: 26px; }
+  .dropset-label { grid-column: 1 / -1; }
 }
 
 .modal-backdrop {
