@@ -1,0 +1,184 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #16150f;
+  --bg-raised: #1e1c15;
+  --bg-input: #211f18;
+  --line: #38352a;
+  --ink: #ece7d8;
+  --ink-dim: #9a9585;
+  --ink-faint: #6b6758;
+
+  /* mode accents — swapped via body[data-mode] */
+  --accent: #5b8ba3;      /* hypertrophy: chalk blue */
+  --accent-ink: #cfe3ec;
+  --warn: #b5482a;
+  --good: #7a9b5e;
+}
+
+body[data-mode="strength"] {
+  --accent: #b5482a;      /* strength: iron rust */
+  --accent-ink: #f0d3c6;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  min-height: 100vh;
+}
+
+::selection { background: var(--accent); color: var(--bg); }
+
+.app { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px; }
+
+/* ---------- header ---------- */
+header.top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 16px; margin-bottom: 24px;
+  flex-wrap: wrap; gap: 12px;
+}
+.wordmark {
+  font-family: 'Oswald', sans-serif; font-weight: 700; letter-spacing: 0.02em;
+  font-size: 28px; text-transform: uppercase; color: var(--ink);
+  display: flex; align-items: baseline; gap: 10px;
+}
+.wordmark span.mode-tag {
+  font-size: 13px; font-weight: 600; color: var(--bg); background: var(--accent);
+  padding: 3px 8px; border-radius: 2px; letter-spacing: 0.08em;
+}
+.mode-switch { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.mode-switch button {
+  font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 12px; letter-spacing: 0.06em;
+  background: var(--bg-raised); color: var(--ink-dim); border: none; padding: 9px 16px; cursor: pointer;
+  font-weight: 600;
+}
+.mode-switch button.active { background: var(--accent); color: var(--bg); }
+
+/* ---------- layout ---------- */
+.grid { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+.panel {
+  background: var(--bg-raised); border: 1px solid var(--line); border-radius: 4px; padding: 18px;
+}
+.panel h2 {
+  font-family: 'Oswald', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-dim); margin: 0 0 14px;
+}
+
+/* entity list */
+.entity-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.entity-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 10px; border: 1px solid var(--line); border-radius: 3px; cursor: pointer;
+  background: var(--bg-input); transition: border-color .15s;
+}
+.entity-item:hover { border-color: var(--accent); }
+.entity-item.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg-input)); }
+.entity-item .name { font-weight: 600; color: var(--ink); }
+.entity-item .meta { font-size: 11px; color: var(--ink-faint); }
+
+button.add-btn, button.primary {
+  font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+  font-size: 13px; background: var(--accent); color: var(--bg); border: none; border-radius: 3px;
+  padding: 10px 14px; cursor: pointer; width: 100%;
+}
+button.add-btn:hover, button.primary:hover { filter: brightness(1.1); }
+button.ghost {
+  background: transparent; border: 1px solid var(--line); color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; border-radius: 3px; padding: 8px 12px; cursor: pointer;
+}
+button.ghost:hover { border-color: var(--accent); color: var(--ink); }
+
+/* forms */
+label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); margin: 12px 0 4px; }
+input[type=text], input[type=number], select {
+  width: 100%; background: var(--bg-input); border: 1px solid var(--line); color: var(--ink);
+  padding: 9px 10px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+}
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* dashboard card */
+.stat-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+.stat {
+  flex: 1; min-width: 120px; background: var(--bg-input); border: 1px solid var(--line); border-radius: 3px;
+  padding: 12px 14px;
+}
+.stat .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+.stat .value { font-family: 'Oswald', sans-serif; font-size: 26px; font-weight: 600; color: var(--accent-ink); margin-top: 2px; }
+.stat .sub { font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+
+.decision-banner {
+  border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-raised));
+  padding: 12px 14px; border-radius: 0 3px 3px 0; margin: 16px 0; font-size: 13px; color: var(--ink);
+}
+.decision-banner.deload { border-left-color: var(--warn); }
+
+table.history { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+table.history th, table.history td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+table.history th { color: var(--ink-faint); text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; font-weight: 600; }
+table.history tr:last-child td { color: var(--accent-ink); }
+
+.empty-state { color: var(--ink-faint); font-size: 13px; padding: 30px 10px; text-align: center; border: 1px dashed var(--line); border-radius: 4px; }
+
+.hint { font-size: 11px; color: var(--ink-faint); margin-top: 4px; line-height: 1.5; }
+
+.client-item { position: relative; padding-right: 34px; }
+.client-item .del-client {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  font-size: 11px; white-space: nowrap;
+}
+.deload-flag {
+  font-size: 10px; background: color-mix(in srgb, var(--warn) 25%, transparent);
+  color: var(--warn); padding: 2px 6px; border-radius: 2px; margin-left: 6px; font-weight: 600;
+}
+
+/* ---------- session / workout builder ---------- */
+.exercise-block {
+  background: var(--bg-input); border: 1px solid var(--line); border-radius: 4px;
+  padding: 12px 14px; margin-bottom: 12px;
+}
+.exercise-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.exercise-name { font-weight: 600; color: var(--ink); font-size: 13px; }
+.primary-tag {
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+  background: var(--accent); color: var(--bg); padding: 2px 6px; border-radius: 2px; margin-left: 6px;
+}
+.icon-btn {
+  background: transparent; border: none; color: var(--ink-faint); cursor: pointer;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 2px 4px;
+}
+.icon-btn:hover { color: var(--warn); }
+.set-rows { display: flex; flex-direction: column; gap: 6px; }
+.set-row {
+  display: grid; grid-template-columns: 26px 1fr 14px 1fr 40px 1fr 22px;
+  align-items: center; gap: 6px; font-size: 12px;
+}
+.set-row .set-num { color: var(--ink-faint); }
+.set-row .set-x, .set-row .set-at { text-align: center; color: var(--ink-faint); font-size: 11px; }
+.set-row input {
+  padding: 6px 6px; font-size: 12px; width: 100%;
+}
+button.add-set {
+  margin-top: 10px; width: auto; padding: 6px 12px; font-size: 11px;
+}
+button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (max-width: 480px) {
+  .set-row { grid-template-columns: 20px 1fr 10px 1fr 32px 1fr 20px; font-size: 11px; }
+}
+
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 10;
+}
+.modal { background: var(--bg-raised); border: 1px solid var(--line); border-radius: 6px; padding: 22px; width: 380px; max-width: 92vw; }
+.modal h3 { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 14px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-actions button { flex: 1; }
+
+footer.credit { text-align: center; color: var(--ink-faint); font-size: 11px; margin-top: 40px; }

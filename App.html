@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16150f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Ledger — autoregulated training</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-mode="hypertrophy">
+  <div class="app">
+    <header class="top">
+      <div class="wordmark">Ledger <span class="mode-tag" id="mode-tag">Hypertrophy</span></div>
+      <div class="mode-switch">
+        <button id="mode-hyper" class="active">Hypertrophy</button>
+        <button id="mode-strength">Strength</button>
+      </div>
+    </header>
+
+    <div class="panel" id="client-panel" style="margin-bottom:16px;">
+      <h2>Clients</h2>
+      <div id="client-list" class="entity-list"></div>
+      <button class="add-btn" id="add-client-btn">+ Add client</button>
+    </div>
+
+    <div id="tracker-area" style="display:none;">
+      <div class="grid">
+        <div class="panel">
+          <h2 id="entity-list-title">Your entries</h2>
+          <div id="entity-list" class="entity-list"></div>
+          <button class="add-btn" id="add-btn">+ Add muscle group</button>
+        </div>
+        <div class="panel" id="dashboard"></div>
+      </div>
+    </div>
+
+    <footer class="credit">All data stays on this machine, in your browser's local storage. No accounts, no sync, no server.</footer>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
