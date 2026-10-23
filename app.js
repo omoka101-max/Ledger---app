@@ -55,6 +55,8 @@
   function totalSetsInDraft(draft) {
     return draft.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
   }
+  function exLabel(e) { return e.supersetGroup ? `${e.name} (SS ${e.supersetGroup})` : e.name; }
+  const SUPERSET_GROUPS = ['A', 'B', 'C', 'D', 'E'];
   const RESISTANCE_LABELS = { none: 'None', bands: 'Bands', chains: 'Chains', minibands: 'Mini bands' };
   function effectiveWeight(s) {
     const extra = (s.resistanceType && s.resistanceType !== 'none') ? (Number(s.resistanceKg) || 0) : 0;
@@ -300,11 +302,17 @@
     if (draft.exercises.length === 0) {
       return `<div class="empty-state" style="margin:14px 0;">No exercises logged for this session yet.</div>`;
     }
-    return draft.exercises.map((ex) => `
+    const blockHTML = (ex, label) => `
       <div class="exercise-block" data-ex-id="${ex.id}">
         <div class="exercise-head">
-          <span class="exercise-name">${ex.name}${ex.isPrimary ? ' <span class="primary-tag">primary</span>' : ''}</span>
-          ${(!ex.isPrimary || !primaryLocked) ? `<button class="icon-btn del-exercise" data-ex-id="${ex.id}" title="Remove exercise">✕ remove</button>` : ''}
+          <span class="exercise-name">${label ? `<span class="ss-label">${label}</span> ` : ''}${ex.name}${ex.isPrimary ? ' <span class="primary-tag">primary</span>' : ''}</span>
+          <span class="exercise-head-actions">
+            <select class="superset-select" data-ex-id="${ex.id}" title="Group into a superset">
+              <option value="">No superset</option>
+              ${SUPERSET_GROUPS.map(g => `<option value="${g}" ${ex.supersetGroup === g ? 'selected' : ''}>Superset ${g}</option>`).join('')}
+            </select>
+            ${(!ex.isPrimary || !primaryLocked) ? `<button class="icon-btn del-exercise" data-ex-id="${ex.id}" title="Remove exercise">✕ remove</button>` : ''}
+          </span>
         </div>
         <div class="set-rows" data-ex-id="${ex.id}">
           ${ex.sets.map((s, idx) => `
@@ -333,7 +341,23 @@
         </div>
         <button class="ghost add-set" data-ex-id="${ex.id}">+ Add set</button>
       </div>
-    `).join('');
+    `;
+
+    // Group exercises that share a superset letter into one visual block, placed where the group first appears.
+    const out = [];
+    const done = new Set();
+    draft.exercises.forEach((ex) => {
+      if (done.has(ex.id)) return;
+      if (!ex.supersetGroup) { out.push(blockHTML(ex, '')); done.add(ex.id); return; }
+      const g = ex.supersetGroup;
+      const members = draft.exercises.filter(e => e.supersetGroup === g);
+      members.forEach(m => done.add(m.id));
+      out.push(`<div class="superset-group">
+        <div class="superset-label">Superset ${g}${members.length < 2 ? ' — assign another exercise to ' + g + ' to pair it' : ''}</div>
+        ${members.map((m, i) => blockHTML(m, g + (i + 1))).join('')}
+      </div>`);
+    });
+    return out.join('');
   }
 
   function wireSessionBuilder(ent, containerSel, onChange) {
@@ -342,6 +366,13 @@
       btn.addEventListener('click', () => {
         const exId = btn.dataset.exId;
         ent.draft.exercises = ent.draft.exercises.filter(e => e.id !== exId);
+        onChange();
+      });
+    });
+    container.querySelectorAll('.superset-select').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const ex = ent.draft.exercises.find(e => e.id === sel.dataset.exId);
+        ex.supersetGroup = sel.value || null;
         onChange();
       });
     });
@@ -477,7 +508,7 @@
       <tr>
         <td>Wk ${h.week}</td>
         <td>${h.setsActuallyDone != null ? h.setsActuallyDone : h.setsPlanned} sets</td>
-        <td>${h.exercises && h.exercises.length ? h.exercises.map(e => e.name).join(', ') : '—'}</td>
+        <td>${h.exercises && h.exercises.length ? h.exercises.map(exLabel).join(', ') : '—'}</td>
         <td>${['Worse','Same','Better'][h.feedback.performance + 1]}</td>
         <td>${h.decision.nextSets}${h.decision.deloadNext ? ' (deload)' : ''}</td>
       </tr>`).join('');
@@ -571,7 +602,7 @@
       <tr>
         <td>${h.block} wk${h.week}</td>
         <td>${formatTopSetCell(h)}</td>
-        <td>${h.exercises && h.exercises.length > 1 ? h.exercises.slice(1).map(e => e.name).join(', ') : '—'}</td>
+        <td>${h.exercises && h.exercises.length > 1 ? h.exercises.slice(1).map(exLabel).join(', ') : '—'}</td>
         <td>e1RM ${Math.round(h.adj.e1rm)}</td>
         <td>${h.adj.nextWeight}kg</td>
       </tr>`).join('');
