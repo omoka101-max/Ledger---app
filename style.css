@@ -205,3 +205,23 @@ button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .modal-actions button { flex: 1; }
 
 footer.credit { text-align: center; color: var(--ink-faint); font-size: 11px; margin-top: 40px; }
+
+/* ---------- supersets ---------- */
+.exercise-head-actions { display: flex; align-items: center; gap: 8px; }
+.superset-select { width: auto; padding: 3px 6px; font-size: 11px; }
+.superset-group {
+  border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent);
+  padding: 8px 0 2px 10px; margin-bottom: 14px; border-radius: 0 4px 4px 0;
+}
+.superset-group .exercise-block { margin-bottom: 8px; }
+.superset-label {
+  font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.08em;
+  font-size: 11px; color: var(--accent-ink); margin-bottom: 8px;
+}
+.ss-label {
+  font-size: 10px; font-weight: 700; background: var(--accent); color: var(--bg);
+  padding: 1px 6px; border-radius: 2px; margin-right: 4px;
+}
+@media (max-width: 480px) {
+  .exercise-head { flex-wrap: wrap; gap: 6px; }
+}
