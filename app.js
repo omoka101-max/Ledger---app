@@ -645,16 +645,71 @@
     });
   }
 
+  // ---------- history detail (per-exercise sets + progression marker) ----------
+  function setSignature(st) {
+    return [st.weight, st.reps, st.rir, st.resistanceType || 'none', st.resistanceKg || 0, !!st.dropSet].join('|');
+  }
+  function setText(st) {
+    const res = st.resistanceType && st.resistanceType !== 'none'
+      ? ` (+${st.resistanceKg || 0}kg ${RESISTANCE_LABELS[st.resistanceType].toLowerCase()})` : '';
+    return `${st.weight}kg×${st.reps}${res} @${st.rir}${st.dropSet ? ' <span class="drop-tag">DS</span>' : ''}`;
+  }
+  // Collapse identical consecutive sets: three of 60kg×10 @2 become "3× 60kg×10 @2".
+  function compactSets(sets) {
+    const out = [];
+    for (let i = 0; i < sets.length;) {
+      let j = i;
+      while (j + 1 < sets.length && setSignature(sets[j + 1]) === setSignature(sets[i])) j++;
+      const n = j - i + 1;
+      out.push((n > 1 ? `${n}× ` : '') + setText(sets[i]));
+      i = j + 1;
+    }
+    return out.join(' · ');
+  }
+  function exTopLoad(ex) {
+    return ex && ex.sets && ex.sets.length ? Math.max(...ex.sets.map(effectiveWeight)) : 0;
+  }
+  // Compare this exercise's heaviest set to the last time the same exercise (matched by name) was logged.
+  function progressionMarker(ent, i, ex) {
+    const top = exTopLoad(ex);
+    if (!top) return '';
+    const key = String(ex.name).trim().toLowerCase();
+    for (let j = i - 1; j >= 0; j--) {
+      const prev = (ent.history[j].exercises || []).find(e => String(e.name).trim().toLowerCase() === key && exTopLoad(e) > 0);
+      if (prev) {
+        const diff = Math.round((top - exTopLoad(prev)) * 10) / 10;
+        if (diff > 0) return ` <span class="hd-delta up" title="Heaviest set vs last time">▲ +${diff}kg</span>`;
+        if (diff < 0) return ` <span class="hd-delta down" title="Heaviest set vs last time">▼ ${diff}kg</span>`;
+        return ` <span class="hd-delta same" title="Heaviest set vs last time">= same</span>`;
+      }
+    }
+    return '';
+  }
+  function historyDetailRow(ent, i, colspan) {
+    const exs = (ent.history[i].exercises || []).filter(e => (e.sets && e.sets.length) || (e.warmups && e.warmups.length));
+    if (!exs.length) return '';
+    const lines = exs.map(ex => {
+      const warm = ex.warmups && ex.warmups.length
+        ? `<div class="hd-warm">warm-up: ${ex.warmups.map(w => `${w.weight}kg×${w.reps}`).join(' · ')}</div>` : '';
+      return `<div class="hd-line">
+        <span class="hd-name">${esc(exLabel(ex))}${ex.isPrimary ? ' <span class="primary-tag">primary</span>' : ''}</span>
+        <span class="hd-sets">${ex.sets && ex.sets.length ? compactSets(ex.sets) : '<em>no working sets</em>'}</span>${progressionMarker(ent, i, ex)}
+        ${warm}
+      </div>`;
+    }).join('');
+    return `<tr class="history-detail"><td colspan="${colspan}">${lines}</td></tr>`;
+  }
+
   function renderHyperHistory(ent) {
     if (!ent.history.length) return '<p class="hint">No weeks logged yet.</p>';
-    const rows = ent.history.slice().reverse().map(h => `
+    const rows = ent.history.map((h, i) => `
       <tr>
         <td>Wk ${h.week}</td>
         <td>${h.setsActuallyDone != null ? h.setsActuallyDone : h.setsPlanned} sets</td>
         <td>${h.exercises && h.exercises.length ? h.exercises.map(exLabel).join(', ') : '—'}</td>
         <td>${['Worse','Same','Better'][h.feedback.performance + 1]}</td>
         <td>${h.decision.nextSets}${h.decision.deloadNext ? ' (deload)' : ''}</td>
-      </tr>`).join('');
+      </tr>${historyDetailRow(ent, i, 5)}`).reverse().join('');
     return `<h2 style="margin-top:22px;">History</h2><table class="history">
       <thead><tr><th>Week</th><th>Sets done</th><th>Exercises</th><th>Perf</th><th>Next target</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -748,14 +803,14 @@
 
   function renderStrengthHistory(ent) {
     if (!ent.history.length) return '<p class="hint">No sessions logged yet.</p>';
-    const rows = ent.history.slice().reverse().map(h => `
+    const rows = ent.history.map((h, i) => `
       <tr>
         <td>${h.block} wk${h.week}</td>
         <td>${formatTopSetCell(h)}</td>
         <td>${h.exercises && h.exercises.length > 1 ? h.exercises.slice(1).map(exLabel).join(', ') : '—'}</td>
         <td>e1RM ${Math.round(h.adj.e1rm)}</td>
         <td>${h.adj.nextWeight}kg</td>
-      </tr>`).join('');
+      </tr>${historyDetailRow(ent, i, 5)}`).reverse().join('');
     return `<h2 style="margin-top:22px;">History</h2><table class="history">
       <thead><tr><th>Block/Wk</th><th>Top set (effective load)</th><th>Accessories</th><th>Est 1RM</th><th>Next</th></tr></thead>
       <tbody>${rows}</tbody>
