@@ -225,3 +225,39 @@ footer.credit { text-align: center; color: var(--ink-faint); font-size: 11px; ma
 @media (max-width: 480px) {
   .exercise-head { flex-wrap: wrap; gap: 6px; }
 }
+
+/* ---------- warm-ups ---------- */
+.warmup-section {
+  border: 1px dashed var(--line); border-radius: 4px; padding: 12px 14px; background: var(--bg-input);
+}
+.warmup-section h2 { margin-bottom: 10px; }
+.warmup-progress { color: var(--accent-ink); font-size: 11px; letter-spacing: 0.04em; margin-left: 8px; text-transform: none; }
+.warmup-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.warmup-item .warmup-name { flex: 1; }
+.warmup-item.done .warmup-name { text-decoration: line-through; color: var(--ink-faint); }
+.warmup-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+.warmup-add { display: flex; gap: 8px; margin-top: 10px; }
+.warmup-add input { flex: 1; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip {
+  background: transparent; border: 1px solid var(--line); color: var(--ink-dim); border-radius: 12px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 5px 10px; cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+
+.warmup-sets { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+.warmup-head { display: flex; justify-content: space-between; align-items: center; }
+.warmup-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+.warmup-actions { display: flex; gap: 6px; }
+.warmup-actions .icon-btn { color: var(--ink-dim); }
+.warmup-actions .icon-btn:hover { color: var(--accent-ink); }
+.ramp-msg { font-size: 11px; color: var(--warn); }
+.ramp-msg:empty { display: none; }
+.warmup-row {
+  display: grid; grid-template-columns: 26px 1fr 14px 1fr 22px; align-items: center; gap: 6px;
+  font-size: 12px; margin-top: 6px; opacity: 0.85;
+}
+.warmup-row .set-num { color: var(--ink-faint); }
+.warmup-row .set-x { text-align: center; color: var(--ink-faint); font-size: 11px; }
+.warmup-row input { padding: 5px 6px; font-size: 12px; width: 100%; }
+@media (max-width: 480px) { .warmup-row { grid-template-columns: 22px 1fr 10px 1fr 20px; } }
