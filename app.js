@@ -43,13 +43,15 @@
   // ---------- draft (in-progress workout) helpers ----------
   function freshDraft(seedExerciseName) {
     return {
+      warmup: [], // session-level warm-up checklist: [{ id, name, done }]
       exercises: seedExerciseName
-        ? [{ id: uid(), name: seedExerciseName, isPrimary: true, sets: [] }]
+        ? [{ id: uid(), name: seedExerciseName, isPrimary: true, sets: [], warmups: [] }]
         : [],
     };
   }
   function ensureDraft(ent) {
     if (!ent.draft) ent.draft = freshDraft();
+    if (!ent.draft.warmup) ent.draft.warmup = []; // drafts saved before warm-ups existed
     return ent.draft;
   }
   function totalSetsInDraft(draft) {
@@ -296,6 +298,102 @@
     mode === 'hypertrophy' ? renderHyperDashboard(ent) : renderStrengthDashboard(ent);
   }
 
+  // ---------- warm-ups ----------
+  const WARMUP_SUGGESTIONS = ['Foam roll', 'Light cardio (5 min)', 'Band pull-aparts', 'Hip mobility', 'Shoulder activation', 'Core bracing'];
+  function esc(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function roundTo2p5(x) { return Math.round(x / 2.5) * 2.5; }
+
+  // Ramp-up scheme as [fraction of working weight, reps]. Lifts need a longer ramp than accessories.
+  function rampSets(target, m) {
+    const scheme = m === 'strength' ? [[0.4, 5], [0.6, 3], [0.75, 2], [0.9, 1]] : [[0.5, 8], [0.75, 4]];
+    const out = [];
+    let prev = -1;
+    scheme.forEach(([pct, reps]) => {
+      const w = roundTo2p5(target * pct);
+      if (w > 0 && w < target && w !== prev) { out.push({ id: uid(), weight: w, reps }); prev = w; }
+    });
+    return out;
+  }
+  // What weight to ramp towards: this exercise's heaviest working set, else (primary lift only) the prescribed weight.
+  function rampTarget(ent, ex) {
+    const top = topSetOf(ex);
+    const fromSets = top ? effectiveWeight(top) : 0;
+    if (fromSets > 0) return fromSets;
+    return (mode === 'strength' && ex.isPrimary) ? (Number(ent.lastWeight) || 0) : 0;
+  }
+
+  function warmupSectionHTML(draft) {
+    const items = draft.warmup || [];
+    const doneCount = items.filter(i => i.done).length;
+    const unused = WARMUP_SUGGESTIONS.filter(sug => !items.some(i => i.name === sug));
+    return `<div class="warmup-section">
+      <h2>Warm-up${items.length ? ` <span class="warmup-progress">${doneCount}/${items.length} done</span>` : ''}</h2>
+      ${items.map(i => `
+        <div class="warmup-item ${i.done ? 'done' : ''}">
+          <input type="checkbox" class="warmup-check" data-wid="${i.id}" ${i.done ? 'checked' : ''}>
+          <span class="warmup-name">${esc(i.name)}</span>
+          <button class="icon-btn del-warmup-item" data-wid="${i.id}" title="Remove">✕</button>
+        </div>`).join('')}
+      <div class="warmup-add">
+        <input type="text" id="warmup-new" placeholder="Add a warm-up item…">
+        <button class="ghost" id="warmup-add-btn">Add</button>
+      </div>
+      ${unused.length ? `<div class="chips">${unused.map(sug => `<button class="chip" data-suggest="${esc(sug)}">+ ${esc(sug)}</button>`).join('')}</div>` : ''}
+    </div>`;
+  }
+
+  function wireWarmupSection(ent, onChange) {
+    const root = $('#warmup-section');
+    if (!root) return;
+    const add = (name) => {
+      name = (name || '').trim();
+      if (!name) return;
+      ent.draft.warmup.push({ id: uid(), name, done: false });
+      onChange();
+    };
+    root.querySelector('#warmup-add-btn').addEventListener('click', () => add(root.querySelector('#warmup-new').value));
+    root.querySelector('#warmup-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') add(e.target.value); });
+    root.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => add(c.dataset.suggest)));
+    root.querySelectorAll('.warmup-check').forEach(cb => cb.addEventListener('change', () => {
+      const item = ent.draft.warmup.find(i => i.id === cb.dataset.wid);
+      item.done = cb.checked;
+      persistDraftOnly(ent);
+      cb.closest('.warmup-item').classList.toggle('done', cb.checked);
+      const p = root.querySelector('.warmup-progress');
+      if (p) p.textContent = `${ent.draft.warmup.filter(i => i.done).length}/${ent.draft.warmup.length} done`;
+    }));
+    root.querySelectorAll('.del-warmup-item').forEach(b => b.addEventListener('click', () => {
+      ent.draft.warmup = ent.draft.warmup.filter(i => i.id !== b.dataset.wid);
+      onChange();
+    }));
+  }
+
+  // Warm-up sets live in ex.warmups, separate from ex.sets, so they never count toward
+  // weekly volume or get picked as the "top set" that drives autoregulation.
+  function warmupSetsHTML(ex) {
+    const ws = ex.warmups || [];
+    return `<div class="warmup-sets">
+      <div class="warmup-head">
+        <span class="warmup-title">Warm-up sets</span>
+        <span class="warmup-actions">
+          <button class="icon-btn auto-ramp" data-ex-id="${ex.id}" title="Generate a ramp-up towards your working weight">⚡ auto ramp</button>
+          <button class="icon-btn add-warmup" data-ex-id="${ex.id}">+ add</button>
+        </span>
+      </div>
+      <div class="ramp-msg" data-ex-id="${ex.id}"></div>
+      ${ws.map((w, i) => `
+        <div class="warmup-row" data-ex-id="${ex.id}" data-wid="${w.id}">
+          <span class="set-num">W${i + 1}</span>
+          <input type="number" data-wfield="weight" data-ex-id="${ex.id}" data-wid="${w.id}" value="${w.weight}" placeholder="kg">
+          <span class="set-x">×</span>
+          <input type="number" data-wfield="reps" data-ex-id="${ex.id}" data-wid="${w.id}" value="${w.reps}" placeholder="reps">
+          <button class="icon-btn del-warmup" data-ex-id="${ex.id}" data-wid="${w.id}" title="Delete warm-up set">✕</button>
+        </div>`).join('')}
+    </div>`;
+  }
+
   // ---------- shared: session builder markup ----------
   function sessionBuilderHTML(draft, opts) {
     const { primaryLocked } = opts || {};
@@ -314,6 +412,7 @@
             ${(!ex.isPrimary || !primaryLocked) ? `<button class="icon-btn del-exercise" data-ex-id="${ex.id}" title="Remove exercise">✕ remove</button>` : ''}
           </span>
         </div>
+        ${warmupSetsHTML(ex)}
         <div class="set-rows" data-ex-id="${ex.id}">
           ${ex.sets.map((s, idx) => `
             <div class="set-row-wrap" data-ex-id="${ex.id}" data-set-id="${s.id}">
@@ -367,6 +466,43 @@
         const exId = btn.dataset.exId;
         ent.draft.exercises = ent.draft.exercises.filter(e => e.id !== exId);
         onChange();
+      });
+    });
+    container.querySelectorAll('.add-warmup').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ex = ent.draft.exercises.find(e => e.id === btn.dataset.exId);
+        ex.warmups = ex.warmups || [];
+        const last = ex.warmups[ex.warmups.length - 1];
+        ex.warmups.push({ id: uid(), weight: last ? last.weight : 0, reps: last ? last.reps : 5 });
+        onChange();
+      });
+    });
+    container.querySelectorAll('.del-warmup').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ex = ent.draft.exercises.find(e => e.id === btn.dataset.exId);
+        ex.warmups = (ex.warmups || []).filter(w => w.id !== btn.dataset.wid);
+        onChange();
+      });
+    });
+    container.querySelectorAll('.auto-ramp').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ex = ent.draft.exercises.find(e => e.id === btn.dataset.exId);
+        const target = rampTarget(ent, ex);
+        if (!target) {
+          const msg = container.querySelector(`.ramp-msg[data-ex-id="${ex.id}"]`);
+          if (msg) msg.textContent = 'Enter a working-set weight first, then auto ramp can build up to it.';
+          return;
+        }
+        ex.warmups = rampSets(target, mode); // replaces any existing warm-up sets for this exercise
+        onChange();
+      });
+    });
+    container.querySelectorAll('[data-wfield]').forEach(input => {
+      input.addEventListener('input', () => {
+        const ex = ent.draft.exercises.find(e => e.id === input.dataset.exId);
+        const w = (ex.warmups || []).find(x => x.id === input.dataset.wid);
+        w[input.dataset.wfield] = Number(input.value);
+        persistDraftOnly(ent);
       });
     });
     container.querySelectorAll('.superset-select').forEach(sel => {
@@ -434,6 +570,8 @@
         <div class="stat"><div class="label">Meso progress</div><div class="value">${ent.weekInMeso}/${ent.mesoLength}</div><div class="sub">week in current block</div></div>
       </div>
 
+      <div id="warmup-section" style="margin-top:22px;">${warmupSectionHTML(draft)}</div>
+
       <h2 style="margin-top:22px;">This week's workout</h2>
       <div id="session-builder">${sessionBuilderHTML(draft, {})}</div>
       <button class="ghost" id="add-exercise-btn" style="margin-top:8px;">+ Add exercise</button>
@@ -461,13 +599,17 @@
 
     $('#add-exercise-btn').addEventListener('click', () => {
       openAddExerciseModal((name) => {
-        ent.draft.exercises.push({ id: uid(), name, isPrimary: false, sets: [] });
+        ent.draft.exercises.push({ id: uid(), name, isPrimary: false, sets: [], warmups: [] });
         persistDraftOnly(ent);
         renderHyperDashboard(ent);
       });
     });
 
     wireSessionBuilder(ent, '#session-builder', () => {
+      persistDraftOnly(ent);
+      renderHyperDashboard(ent);
+    });
+    wireWarmupSection(ent, () => {
       persistDraftOnly(ent);
       renderHyperDashboard(ent);
     });
@@ -488,9 +630,10 @@
 
       const hist = updated.history.slice();
       const lastIdx = hist.length - 1;
-      hist[lastIdx] = { ...hist[lastIdx], setsActuallyDone: actualSets, exercises: current.draft.exercises };
+      hist[lastIdx] = { ...hist[lastIdx], setsActuallyDone: actualSets, exercises: current.draft.exercises, warmup: current.draft.warmup };
       updated.history = hist;
       updated.draft = freshDraft();
+      updated.draft.warmup = (current.draft.warmup || []).map(w => ({ id: uid(), name: w.name, done: false })); // same routine next time
 
       entities[selectedIndex] = updated;
       setEntities(entities);
@@ -533,6 +676,8 @@
         <div class="stat"><div class="label">Est. 1RM</div><div class="value">${Math.round(ent.e1rm)}<span style="font-size:14px;">kg</span></div></div>
       </div>
 
+      <div id="warmup-section" style="margin-top:22px;">${warmupSectionHTML(draft)}</div>
+
       <h2 style="margin-top:22px;">Today's workout</h2>
       <p class="hint">The heaviest set on <strong>${primary ? primary.name : 'the primary lift'}</strong> drives next session's prescribed weight — bar weight plus any band/chain tension counts as the effective load. Accessory exercises are logged, not autoregulated.</p>
       <div id="session-builder">${sessionBuilderHTML(draft, { primaryLocked: true })}</div>
@@ -545,13 +690,17 @@
 
     $('#add-exercise-btn').addEventListener('click', () => {
       openAddExerciseModal((name) => {
-        ent.draft.exercises.push({ id: uid(), name, isPrimary: false, sets: [] });
+        ent.draft.exercises.push({ id: uid(), name, isPrimary: false, sets: [], warmups: [] });
         persistDraftOnly(ent);
         renderStrengthDashboard(ent);
       });
     });
 
     wireSessionBuilder(ent, '#session-builder', () => {
+      persistDraftOnly(ent);
+      renderStrengthDashboard(ent);
+    });
+    wireWarmupSection(ent, () => {
       persistDraftOnly(ent);
       renderStrengthDashboard(ent);
     });
@@ -572,9 +721,10 @@
 
       const hist = updated.history.slice();
       const lastIdx = hist.length - 1;
-      hist[lastIdx] = { ...hist[lastIdx], exercises: current.draft.exercises };
+      hist[lastIdx] = { ...hist[lastIdx], exercises: current.draft.exercises, warmup: current.draft.warmup };
       updated.history = hist;
       updated.draft = freshDraft(current.entityName);
+      updated.draft.warmup = (current.draft.warmup || []).map(w => ({ id: uid(), name: w.name, done: false })); // same routine next time
 
       entities[selectedIndex] = updated;
       setEntities(entities);
