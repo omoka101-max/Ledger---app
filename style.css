@@ -123,7 +123,7 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accen
 table.history { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
 table.history th, table.history td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
 table.history th { color: var(--ink-faint); text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; font-weight: 600; }
-table.history tr:last-child td { color: var(--accent-ink); }
+table.history tbody tr:first-child td { color: var(--accent-ink); }
 
 .empty-state { color: var(--ink-faint); font-size: 13px; padding: 30px 10px; text-align: center; border: 1px dashed var(--line); border-radius: 4px; }
 
@@ -261,3 +261,17 @@ footer.credit { text-align: center; color: var(--ink-faint); font-size: 11px; ma
 .warmup-row .set-x { text-align: center; color: var(--ink-faint); font-size: 11px; }
 .warmup-row input { padding: 5px 6px; font-size: 12px; width: 100%; }
 @media (max-width: 480px) { .warmup-row { grid-template-columns: 22px 1fr 10px 1fr 20px; } }
+
+/* ---------- history detail rows ---------- */
+table.history tr.history-detail td {
+  padding: 4px 8px 12px; font-size: 11px; color: var(--ink-dim); border-bottom: 1px solid var(--line);
+}
+table.history tbody tr:first-child + tr.history-detail td { color: var(--ink-dim); }
+.hd-line { padding: 3px 0; line-height: 1.6; }
+.hd-name { color: var(--ink); font-weight: 600; margin-right: 6px; }
+.hd-sets { color: var(--ink-dim); }
+.hd-warm { color: var(--ink-faint); font-size: 10px; }
+.hd-delta { font-weight: 700; margin-left: 6px; white-space: nowrap; }
+.hd-delta.up { color: var(--good); }
+.hd-delta.down { color: var(--warn); }
+.hd-delta.same { color: var(--ink-faint); }
